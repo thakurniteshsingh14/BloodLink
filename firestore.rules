@@ -1,0 +1,121 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields: uid, name, email, role, bloodGroup, location, phone, lastDonationDate, createdAt
+    //
+    // Collection: camps
+    // Fields: title, date, location, organizer, description, status, createdAt
+    //
+    // Collection: donations
+    // Fields: userId, campId, date, status
+    //
+    // Collection: bloodRequests
+    // Fields: requestedBy, bloodGroup, units, urgency, location, contact, status, createdAt
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         request.auth.token.email == "abhisingh.1419hhfgh@gmail.com");
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'name', 'email', 'role']) &&
+             data.role in ['donor', 'admin'] &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidCamp(data) {
+      return data.keys().hasAll(['title', 'date', 'location', 'organizer', 'status']) &&
+             data.status in ['pending', 'approved', 'rejected', 'completed'] &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200;
+    }
+
+    function isValidDonation(data) {
+      return data.keys().hasAll(['userId', 'campId', 'date', 'status']) &&
+             data.status in ['registered', 'donated', 'cancelled'];
+    }
+
+    function isValidBloodRequest(data) {
+      return data.keys().hasAll(['requestedBy', 'bloodGroup', 'units', 'urgency', 'location', 'contact', 'status']) &&
+             data.status in ['pending', 'fulfilled', 'cancelled'] &&
+             data.urgency in ['low', 'medium', 'high', 'critical'];
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['userId', 'title', 'message', 'type', 'read', 'createdAt']) &&
+             data.type in ['urgent_request', 'camp_update', 'system'] &&
+             data.read is bool;
+    }
+
+    function isValidContactMessage(data) {
+      return data.keys().hasAll(['name', 'email', 'message', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
+             data.message is string && data.message.size() > 0 && data.message.size() < 2000;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && 
+        (request.resource.data.role == 'donor' || 
+         (request.resource.data.role == 'admin' && request.auth.token.email == "abhisingh.1419hhfgh@gmail.com"));
+      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) && (isAdmin() || request.resource.data.role == resource.data.role);
+    }
+
+    match /camps/{campId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidCamp(request.resource.data);
+      allow update: if isAdmin() && isValidCamp(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /donations/{donationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidDonation(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isAdmin()) && isValidDonation(request.resource.data);
+    }
+
+    match /bloodRequests/{requestId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidBloodRequest(request.resource.data);
+      allow update: if isAuthenticated() && (request.resource.data.requestedBy == request.auth.uid || isAdmin()) && isValidBloodRequest(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated(); // Allow system or other users to create notifications
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && 
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /contactMessages/{messageId} {
+      allow create: if isValidContactMessage(request.resource.data);
+      allow read, delete: if isAdmin();
+    }
+  }
+}

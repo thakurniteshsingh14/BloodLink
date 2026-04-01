@@ -1,0 +1,123 @@
+{
+  "entities": {
+    "users": {
+      "title": "User",
+      "description": "A user of the blood donation app.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["donor", "admin"] },
+        "bloodGroup": { "type": "string", "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] },
+        "location": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "phone": { "type": "string" },
+        "lastDonationDate": { "type": "string", "format": "date" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "email", "role"]
+    },
+    "camps": {
+      "title": "Camp",
+      "description": "A blood donation camp.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "location": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "organizer": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "date", "location", "organizer", "status"]
+    },
+    "donations": {
+      "title": "Donation",
+      "description": "A donation record.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "campId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["registered", "donated", "cancelled"] }
+      },
+      "required": ["userId", "campId", "date", "status"]
+    },
+    "bloodRequests": {
+      "title": "Blood Request",
+      "description": "An urgent blood request.",
+      "type": "object",
+      "properties": {
+        "requestedBy": { "type": "string" },
+        "bloodGroup": { "type": "string", "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] },
+        "units": { "type": "integer" },
+        "urgency": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+        "location": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "contact": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "fulfilled", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["requestedBy", "bloodGroup", "units", "urgency", "location", "contact", "status"]
+    },
+    "notifications": {
+      "title": "Notification",
+      "description": "A notification for a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["urgent_request", "camp_update", "system"] },
+        "relatedId": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "type", "read", "createdAt"]
+    },
+    "contactMessages": {
+      "title": "Contact Message",
+      "description": "A message from the contact form.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "message", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "User profiles."
+    },
+    "/camps/{campId}": {
+      "schema": "camps",
+      "description": "Blood donation camps."
+    },
+    "/donations/{donationId}": {
+      "schema": "donations",
+      "description": "Donation records."
+    },
+    "/bloodRequests/{requestId}": {
+      "schema": "bloodRequests",
+      "description": "Urgent blood requests."
+    },
+    "/notifications/{notificationId}": {
+      "schema": "notifications",
+      "description": "User notifications."
+    },
+    "/contactMessages/{messageId}": {
+      "schema": "contactMessages",
+      "description": "Messages from the contact form."
+    }
+  }
+}
